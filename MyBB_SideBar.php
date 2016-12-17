@@ -21,8 +21,16 @@ function MyBB_SideBar_info(){
   );
 }
 
+function MyBB_SideBar_is_installed() {
+  global $db;
+  $query = $db->write_query("SELECT COUNT(*) as count FROM " . TABLE_PREFIX . "settinggroups WHERE name='MyBB_SideBar'");
+  $count = $db->fetch_field($query, "count");
+  if($count == 1) {
+    return true;
+  }
+};
 
-function MyBB_SideBar_activate() {
+function MyBB_SideBar_install() {
   global $db;
 
   $MyBB_SideBar_group = array(
@@ -55,7 +63,7 @@ function MyBB_SideBar_activate() {
     'name'            => 'MyBB_SideBar_plugin_side',
     'title'           => 'Which side for the SideBar?',
     'description'     => 'This option chooses which side the sidebar shows on.',
-    'optionscode'     => 'select \n 1=Right \n 2=Left \n 3=both',
+    'optionscode'     => 'select \n 1=Right \n 2=Left \n 3=Both',
     'value'           => '1',
     'disporder'       => 2,
     'gid'             => intval($gid),
@@ -63,14 +71,51 @@ function MyBB_SideBar_activate() {
 
   $db->insert_query('settings', $MyBB_Sidebar_setting_side);
   rebuild_settings();
+
+  //Add stylesheet to the master template so it becomes inherited.
+  $stylesheet = file_get_contents(MYBB_ROOT."inc/plugins/MyBB_SideBar/MyBB_SideBar.css");
+  $MyBB_SideBar_stylesheet= array(
+    "name"        => "MyBB_SideBar.css",
+    "tid"         => 1,
+    "stylesheet"  => $db->escape_string($stylesheet),
+    "cachefile"   => $db->escape_string(str_replace('/', '', MyBB_SideBar.css)),
+    "lastmodified" => TIME_NOW
+  );
+  require_once MYBB_ADMIN_DIR."inc/functions_themes.php";
+  $sid = $db->insert_query("themestylesheets", $MyBB_SideBar_stylesheet);
+  $db->update_query('themestylesheets', array("cachefile" => "css.php?stylesheet=".$sid), "sid = '".$sid."'", 1);
+  $tids = $db->simple_select("themes", "tid");
+  while($theme = $db->fetch_array($tids))
+  {
+    update_theme_stylesheet_list($theme['tid']);
+  }
+}
+
+
+function MyBB_SideBar_activate() {
+  $mybb->settings['MyBB_SideBar_plugin_enable'] = 1;
 }
 
 function MyBB_SideBar_deactivate() {
+  $mybb->settings['MyBB_SideBar_plugin_enable'] = 0;
+}
+
+function MyBB_SideBar_uninstall() {
   global $db;
+
   $db->query("DELETE FROM " . TABLE_PREFIX . "settings WHERE name IN ('MyBB_SideBar_plugin_enable')");
   $db->query("DELETE FROM " . TABLE_PREFIX . "settings WHERE name IN ('MyBB_SideBar_plugin_side')");
   $db->query("DELETE FROM " . TABLE_PREFIX . "settinggroups WHERE name='MyBB_SideBar'");
   rebuild_settings();
+
+  // Remove MyBB_SideBar.css from the theme cache directories if it exists.
+  require_once MYBB_ADMIN_DIR."inc/functions_themes.php";
+  $db->delete_query("themestylesheets", "name = 'MyBB_SideBar.css'");
+  $query = $db->simple_select("themes", "tid");
+  while($theme = $db->fetch_array($query))
+  {
+    update_theme_stylesheet_list($theme['tid']);
+  }
 }
 
 function MyBB_SideBar_global_start(){

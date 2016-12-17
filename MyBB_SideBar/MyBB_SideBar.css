@@ -1,0 +1,12 @@
+.sideBar {
+  width: 18%;
+  margin: 0 1%;
+}
+
+.sideBarRight {
+  float: right;
+}
+
+.sideBarLeft {
+  float: left;
+}
