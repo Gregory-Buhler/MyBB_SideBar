@@ -81,6 +81,35 @@ function MyBB_SideBar_install() {
     "cachefile"   => $db->escape_string(str_replace('/', '', MyBB_SideBar.css)),
     "lastmodified" => TIME_NOW
   );
+
+  $charset = $db->build_create_table_collation();
+  if(!$db->table_exists(TABLE_PREFIX + "widgets"))
+  {
+    $createTableWidgets = "CREATE TABLE `" . TABLE_PREFIX . "widgets`
+    (
+      id          SMALLINT AUTO_INCREMENT PRIMARY KEY,
+      type_id     SMALLINT NOT NULL,
+      side_id     SMALLINT NOT NULL,
+      content     MEDIUMTEXT NOT NULL,
+      description TEXT,
+      active      TINYINT NOT NULL DEFAULT 0
+    );";
+
+    $db->write_query($createTableWidgets);
+  }
+
+  if(!$db->table_exists(TABLE_PREFIX + "widget_types"))
+  {
+    $createTableWidgetTypes = "CREATE TABLE `" . TABLE_PREFIX . "widget_types`
+    (
+      id SMALLINT AUTO_INCREMENT PRIMARY KEY,
+      wrapper MEDIUMTEXT,
+      description TEXT
+    );";
+
+    $db->write_query($createTableWidgetTypes);
+  }
+
   require_once MYBB_ADMIN_DIR."inc/functions_themes.php";
   $sid = $db->insert_query("themestylesheets", $MyBB_SideBar_stylesheet);
   $db->update_query('themestylesheets', array("cachefile" => "css.php?stylesheet=".$sid), "sid = '".$sid."'", 1);
@@ -107,6 +136,9 @@ function MyBB_SideBar_uninstall() {
   $db->query("DELETE FROM " . TABLE_PREFIX . "settings WHERE name IN ('MyBB_SideBar_plugin_side')");
   $db->query("DELETE FROM " . TABLE_PREFIX . "settinggroups WHERE name='MyBB_SideBar'");
   rebuild_settings();
+
+  $db->drop_table("widgets");
+  $db->drop_table("widget_types");
 
   // Remove MyBB_SideBar.css from the theme cache directories if it exists.
   require_once MYBB_ADMIN_DIR."inc/functions_themes.php";
